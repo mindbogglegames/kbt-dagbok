@@ -44,7 +44,7 @@ If you'd rather not use git or GitHub, Netlify Drop (app.netlify.com/drop) also 
 
 ## Updating the app
 
-Upload the changed files to the same repository, the same way as before. The next time you open the app with an internet connection, it loads the new version. Offline, it uses the last version it saved. GitHub Pages can take a few minutes to publish a change.
+The app is live at https://mindbogglegames.github.io/kbt-dagbok/, published from `main` in [mindbogglegames/kbt-dagbok](https://github.com/mindbogglegames/kbt-dagbok). To update it, commit and push to `main`, or upload the changed files on GitHub. The next time you open the app with an internet connection, it loads the new version. Offline, it uses the last version it saved. GitHub Pages can take a few minutes to publish a change.
 
 **Updates don't touch your entries.** The entries are stored separately from the app's files, under the site's address. The stored data carries a version number, so if a future update changes the format, the app converts old entries instead of discarding them. If the app ever can't read what's stored, it shows a warning and refuses to save, so it never overwrites the existing data.
 

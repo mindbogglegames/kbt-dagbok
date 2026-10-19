@@ -35,6 +35,7 @@ const fieldLabel = (fid) => FIELDS.find((f) => f.id === fid).label;
 // The step-by-step form shows one step at a time. The date is prefilled, so
 // it shares a step with the situation instead of costing a tap of its own.
 const STEPS = [['datum', 'situation'], ['tanke'], ['kansla'], ['hantering'], ['utvardering']];
+const STEP_NAMES = ['Situation', 'Tanke', 'Känsla', 'Hantering', 'Utvärdering'];
 const stepOf = (fid) => STEPS.findIndex((s) => s.includes(fid));
 const stepTitle = (i) => STEPS[i].map((fid, j) => (j ? fieldLabel(fid).toLowerCase() : fieldLabel(fid))).join(' och ');
 
@@ -498,9 +499,8 @@ function renderForm(id) {
           <button type="button" class="btn-text" data-action="discard-draft">${existing ? 'Ångra ändringar' : 'Börja om'}</button>
         </div>` : ''}
       <nav class="steps" id="form-steps" aria-label="Steg">
-        <div class="steps-count" id="step-count"></div>
         <ol class="steps-bar">
-          ${STEPS.map((s, i) => `<li><button type="button" class="step-dot" data-step="${i}"><span>${i + 1}</span></button></li>`).join('')}
+          ${STEP_NAMES.map((name, i) => `<li><button type="button" class="step-tab" data-step="${i}">${esc(name)}</button></li>`).join('')}
         </ol>
       </nav>
       <form class="form" id="entry-form" novalidate>
@@ -531,7 +531,7 @@ function renderForm(id) {
   const statusEl = document.getElementById('form-status');
   const topEl = app.querySelector('.form-top');
   const dialog = document.getElementById('empty-dialog');
-  const stepDots = [...app.querySelectorAll('.step-dot')];
+  const stepTabs = [...app.querySelectorAll('.step-tab')];
   const navButton = (name) => app.querySelector(`[data-nav="${name}"]`);
   const pinned = new Set();
   let focused = null;
@@ -567,12 +567,12 @@ function renderForm(id) {
   }
 
   function updateSteps() {
-    stepDots.forEach((dot, i) => {
+    stepTabs.forEach((tab, i) => {
       const done = STEPS[i].every(isFilled);
-      dot.classList.toggle('is-done', done);
-      dot.setAttribute('aria-label', `Steg ${i + 1}: ${stepTitle(i)}${done ? ' (ifyllt)' : ''}`);
-      if (i === step) dot.setAttribute('aria-current', 'step');
-      else dot.removeAttribute('aria-current');
+      tab.classList.toggle('is-done', done);
+      tab.setAttribute('aria-label', `Steg ${i + 1} av ${STEPS.length}: ${stepTitle(i)}${done ? ' (ifyllt)' : ''}`);
+      if (i === step) tab.setAttribute('aria-current', 'step');
+      else tab.removeAttribute('aria-current');
     });
   }
 
@@ -592,7 +592,6 @@ function renderForm(id) {
     }
     form.classList.toggle('is-wizard', wizard);
     document.getElementById('form-steps').hidden = !wizard;
-    document.getElementById('step-count').textContent = `Steg ${step + 1} av ${STEPS.length}`;
     app.querySelectorAll('[data-mode]').forEach((btn) => {
       btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
     });
@@ -719,7 +718,7 @@ function renderForm(id) {
     btn.addEventListener('click', () => setMode(btn.dataset.mode));
   });
 
-  stepDots.forEach((dot, i) => dot.addEventListener('click', () => goToStep(i)));
+  stepTabs.forEach((tab, i) => tab.addEventListener('click', () => goToStep(i)));
   navButton('prev').addEventListener('click', () => goToStep(step - 1));
   navButton('next').addEventListener('click', () => goToStep(step + 1));
 

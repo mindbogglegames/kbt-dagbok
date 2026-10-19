@@ -4,32 +4,39 @@
 
 const FIELDS = [
   {
-    id: 'datum', label: 'Datum', type: 'date', errorText: 'Välj ett datum',
+    id: 'datum', label: 'Datum', type: 'date',
     help: 'När inträffade situationen? Dagens datum är ifyllt – ändra det om det hände en annan dag.'
   },
   {
-    id: 'situation', label: 'Situation', minHeight: '76px', errorText: 'Fyll i fältet',
+    id: 'situation', label: 'Situation', minHeight: '76px',
     help: 'Här beskriver du kort situationen. Var var du? Vilka var där? Vad gjorde du?'
   },
   {
-    id: 'tanke', label: 'Tanke', minHeight: '128px', errorText: 'Fyll i fältet',
+    id: 'tanke', label: 'Tanke', minHeight: '128px',
     help: 'Här beskrivs vad du tänkte när händelsen inträffade. Vilka tankar for igenom ditt huvud? De automatiska tankarna kan förekomma i form av både ord, bilder, minnen eller förutsägelser om vad som kan hända.'
   },
   {
-    id: 'kansla', label: 'Känsla och kropp', minHeight: '128px', errorText: 'Fyll i fältet',
+    id: 'kansla', label: 'Känsla och kropp', minHeight: '128px',
     help: 'Vilka känslor upplevde du? Känslor kan i allmänhet beskrivas med ett ord, t ex generad, förödmjukad, ledsen, arg. Om du beskriver dina känslor med en mening kan det vara så att du istället skrivit ned en tanke. Lägg även till eventuella kroppsliga symtom, t ex hjärtklappning, rodnad.'
   },
   {
-    id: 'hantering', label: 'Tankehantering', minHeight: '128px', errorText: 'Fyll i fältet',
+    id: 'hantering', label: 'Tankehantering', minHeight: '128px',
     help: 'Använde du någon tankestrategi, i så fall vilken? Hanterade du tanken på annat sätt? Flydde du situationen? Tog du till ett säkerhetsbeteende? Agerade du på det sätt du ville, trots tanken? Observera att du kan registrera situationer oavsett om du hanterat tanken på ett hjälpsamt sätt eller inte. Det går att lära sig av alla situationer!'
   },
   {
-    id: 'utvardering', label: 'Utvärdering', minHeight: '128px', errorText: 'Fyll i fältet',
+    id: 'utvardering', label: 'Utvärdering', minHeight: '128px',
     help: 'Vad hände? Var det sätt du hanterade tanken på till nytta för dig? Vad ledde det till i stunden? Vad leder det till på sikt?'
   }
 ];
 
 const FIELD_IDS = FIELDS.map((f) => f.id);
+const fieldLabel = (fid) => FIELDS.find((f) => f.id === fid).label;
+
+// The step-by-step form shows one step at a time. The date is prefilled, so
+// it shares a step with the situation instead of costing a tap of its own.
+const STEPS = [['datum', 'situation'], ['tanke'], ['kansla'], ['hantering'], ['utvardering']];
+const stepOf = (fid) => STEPS.findIndex((s) => s.includes(fid));
+const stepTitle = (i) => STEPS[i].map((fid, j) => (j ? fieldLabel(fid).toLowerCase() : fieldLabel(fid))).join(' och ');
 
 // ---------- Storage ----------
 // Entries live in localStorage under one key, tagged with a schema version.
@@ -39,6 +46,7 @@ const FIELD_IDS = FIELDS.map((f) => f.id);
 const STORAGE_KEY = 'kbt-dagbok';
 const DRAFT_PREFIX = 'kbt-dagbok-utkast:';
 const LAST_EXPORT_KEY = 'kbt-dagbok-senaste-export';
+const FORM_MODE_KEY = 'kbt-dagbok-formlage';
 const SCHEMA_VERSION = 1;
 
 let entries = [];
@@ -188,6 +196,8 @@ const svg = (body, size = 20, color = 'currentColor', width = 2) =>
 
 const ICONS = {
   back: svg('<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>', 24),
+  prev: svg('<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>', 20),
+  next: svg('<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>', 20),
   plus: svg('<path d="M12 5v14"/><path d="M5 12h14"/>', 20, 'currentColor', 2.25),
   chevron: svg('<path d="M9 6l6 6-6 6"/>', 20, '#8a91a1'),
   lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', 16),
@@ -195,7 +205,6 @@ const ICONS = {
   download: svg('<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>', 18),
   upload: svg('<path d="M12 20V9"/><path d="M7 14l5-5 5 5"/><path d="M5 4h14"/>', 18),
   edit: svg('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>', 20),
-  alert: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5v.5"/>', 18),
   info: '<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">'
     + '<circle class="ring" cx="14" cy="14" r="12.5" stroke-width="1.5"/>'
     + '<circle class="glyph-dot" cx="14" cy="8.8" r="1.7"/>'
@@ -319,7 +328,9 @@ function cardHtml(entry) {
         <span class="card-weekday">${WEEKDAYS_SHORT[d.getDay()]}</span>
       </div>
       <div class="card-body">
-        <span class="card-situation">${esc(entry.situation)}</span>
+        ${entry.situation
+          ? `<span class="card-situation">${esc(entry.situation)}</span>`
+          : '<span class="card-situation is-empty">Ingen situation beskriven</span>'}
         <span class="card-feeling">${esc(feeling)}</span>
       </div>
       ${ICONS.chevron}
@@ -427,23 +438,29 @@ async function importBackup(file) {
 }
 
 // ---------- Form ----------
+// No field is required. The form has two layouts over the same fields: step
+// by step (one step at a time) or all fields at once. Switching layout or
+// step only shows and hides fields, so nothing typed is lost and nothing is
+// checked; the only check is a warning on Spara when fields are empty.
+
+function readFormMode() {
+  return localStorage.getItem(FORM_MODE_KEY) === 'alla' ? 'alla' : 'steg';
+}
 
 function fieldHtml(f, value) {
   const inputId = `falt-${f.id}`;
   const helpId = `hjalp-${f.id}`;
-  const errorId = `fel-${f.id}`;
   const control = f.type === 'date'
-    ? `<input class="input" type="date" id="${inputId}" name="${f.id}" value="${esc(value)}" required aria-describedby="${helpId} ${errorId}">`
-    : `<textarea class="input" id="${inputId}" name="${f.id}" required style="min-height:${f.minHeight}" aria-describedby="${helpId} ${errorId}">${esc(value)}</textarea>`;
+    ? `<input class="input" type="date" id="${inputId}" name="${f.id}" value="${esc(value)}" aria-describedby="${helpId}">`
+    : `<textarea class="input" id="${inputId}" name="${f.id}" style="--min-h:${f.minHeight}" aria-describedby="${helpId}">${esc(value)}</textarea>`;
   return `
     <div class="field" data-field="${f.id}">
       <div class="field-head">
         <label for="${inputId}">${esc(f.label)}</label>
         <button type="button" class="info-btn" aria-label="Visa hjälp för ${esc(f.label)}" aria-expanded="false" aria-controls="${helpId}">${ICONS.info}</button>
       </div>
-      <p class="help" id="${helpId}" hidden>${esc(f.help)}</p>
       ${control}
-      <p class="field-error" id="${errorId}" hidden>${ICONS.alert}<span>${esc(f.errorText)}</span></p>
+      <p class="help" id="${helpId}" hidden>${esc(f.help)}</p>
     </div>`;
 }
 
@@ -465,33 +482,68 @@ function renderForm(id) {
 
   app.innerHTML = `
     <div class="screen">
-      <header class="appbar">
-        <a class="icon-btn" href="${backTarget}" data-back aria-label="Tillbaka">${ICONS.back}</a>
-        <h1>${existing ? 'Redigera registrering' : 'Ny registrering'}</h1>
-      </header>
+      <div class="form-top">
+        <header class="appbar">
+          <a class="icon-btn" href="${backTarget}" data-back aria-label="Tillbaka">${ICONS.back}</a>
+          <h1>${existing ? 'Redigera registrering' : 'Ny registrering'}</h1>
+        </header>
+        <div class="mode-switch" role="group" aria-label="Visa fälten">
+          <button type="button" data-mode="steg">Steg för steg</button>
+          <button type="button" data-mode="alla">Alla fält</button>
+        </div>
+      </div>
       ${restored ? `
         <div class="notice">
           <p>Du fortsätter på ett osparat utkast.</p>
           <button type="button" class="btn-text" data-action="discard-draft">${existing ? 'Ångra ändringar' : 'Börja om'}</button>
         </div>` : ''}
+      <nav class="steps" id="form-steps" aria-label="Steg">
+        <div class="steps-count" id="step-count"></div>
+        <ol class="steps-bar">
+          ${STEPS.map((s, i) => `<li><button type="button" class="step-dot" data-step="${i}"><span>${i + 1}</span></button></li>`).join('')}
+        </ol>
+      </nav>
       <form class="form" id="entry-form" novalidate>
         ${FIELDS.map((f) => fieldHtml(f, values[f.id])).join('')}
       </form>
       <div class="bottombar">
         <div class="status" id="form-status" aria-live="polite"></div>
-        <button type="submit" form="entry-form" class="btn btn-primary">Spara</button>
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-nav="prev">${ICONS.prev}Föregående</button>
+          <button type="button" class="btn btn-primary" data-nav="next">Nästa${ICONS.next}</button>
+          <button type="submit" form="entry-form" class="btn btn-primary" data-nav="save">Spara</button>
+        </div>
       </div>
+      <dialog class="dialog" id="empty-dialog" aria-labelledby="empty-dialog-title">
+        <form method="dialog">
+          <h2 id="empty-dialog-title"></h2>
+          <ul id="empty-dialog-list"></ul>
+          <p id="empty-dialog-text"></p>
+          <div class="dialog-actions">
+            <button class="btn btn-primary" value="save">Spara ändå</button>
+            <button class="btn btn-secondary" value="fill"></button>
+          </div>
+        </form>
+      </dialog>
     </div>`;
 
   const form = document.getElementById('entry-form');
   const statusEl = document.getElementById('form-status');
+  const topEl = app.querySelector('.form-top');
+  const dialog = document.getElementById('empty-dialog');
+  const stepDots = [...app.querySelectorAll('.step-dot')];
+  const navButton = (name) => app.querySelector(`[data-nav="${name}"]`);
   const pinned = new Set();
   let focused = null;
-  let showErrors = false;
   let hasDraft = restored;
+  let mode = readFormMode();
 
   const valueOf = (fid) => form.elements[fid].value;
+  const isFilled = (fid) => !!valueOf(fid).trim();
   const fieldEl = (fid) => form.querySelector(`[data-field="${fid}"]`);
+
+  // A restored draft opens on the first step that still has an empty field.
+  let step = restored ? Math.max(0, STEPS.findIndex((s) => !s.every(isFilled))) : 0;
 
   function currentValues() {
     const out = {};
@@ -501,39 +553,119 @@ function renderForm(id) {
 
   function updateHelp(fid) {
     const el = fieldEl(fid);
-    const label = FIELDS.find((f) => f.id === fid).label;
     const show = focused === fid || pinned.has(fid);
     el.querySelector('.help').hidden = !show;
     const btn = el.querySelector('.info-btn');
     btn.setAttribute('aria-expanded', String(show));
-    btn.setAttribute('aria-label', `${show ? 'Dölj' : 'Visa'} hjälp för ${label}`);
-  }
-
-  function updateError(fid) {
-    const missing = showErrors && !valueOf(fid).trim();
-    const el = fieldEl(fid);
-    el.classList.toggle('has-error', missing);
-    el.querySelector('.field-error').hidden = !missing;
-    form.elements[fid].setAttribute('aria-invalid', String(missing));
+    btn.setAttribute('aria-label', `${show ? 'Dölj' : 'Visa'} hjälp för ${fieldLabel(fid)}`);
   }
 
   function updateStatus() {
-    const missing = FIELD_IDS.filter((fid) => !valueOf(fid).trim()).length;
-    const filled = FIELD_IDS.length - missing;
-    statusEl.classList.toggle('is-error', showErrors && missing > 0);
-    if (missing === 0) statusEl.textContent = 'Alla fält ifyllda';
-    else if (showErrors) statusEl.textContent = `${missing} fält saknas`;
+    const filled = FIELD_IDS.filter(isFilled).length;
+    if (filled === FIELD_IDS.length) statusEl.textContent = 'Alla fält ifyllda';
     else statusEl.textContent = `${filled} av ${FIELD_IDS.length} ifyllda${hasDraft ? ' · utkast sparat' : ''}`;
   }
 
+  function updateSteps() {
+    stepDots.forEach((dot, i) => {
+      const done = STEPS[i].every(isFilled);
+      dot.classList.toggle('is-done', done);
+      dot.setAttribute('aria-label', `Steg ${i + 1}: ${stepTitle(i)}${done ? ' (ifyllt)' : ''}`);
+      if (i === step) dot.setAttribute('aria-current', 'step');
+      else dot.removeAttribute('aria-current');
+    });
+  }
+
+  function autoGrow(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 2 + 'px';
+  }
+  const needsAutoGrow = !(window.CSS && CSS.supports('field-sizing', 'content'));
+
+  function updateLayout() {
+    const wizard = mode === 'steg';
+    for (const fid of FIELD_IDS) {
+      const el = fieldEl(fid);
+      const hide = wizard && !STEPS[step].includes(fid);
+      if (hide && el.contains(document.activeElement)) document.activeElement.blur();
+      el.hidden = hide;
+    }
+    form.classList.toggle('is-wizard', wizard);
+    document.getElementById('form-steps').hidden = !wizard;
+    document.getElementById('step-count').textContent = `Steg ${step + 1} av ${STEPS.length}`;
+    app.querySelectorAll('[data-mode]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
+    const last = step === STEPS.length - 1;
+    navButton('prev').hidden = !wizard;
+    navButton('prev').disabled = step === 0;
+    navButton('next').hidden = !wizard || last;
+    navButton('save').hidden = wizard && !last;
+    updateSteps();
+    // Hidden textareas can't be measured, so size them when they show.
+    if (needsAutoGrow) form.querySelectorAll('.field:not([hidden]) textarea').forEach(autoGrow);
+  }
+
+  function goToStep(i) {
+    step = i;
+    updateLayout();
+    window.scrollTo(0, 0);
+  }
+
+  function goToField(fid) {
+    if (mode === 'steg') goToStep(stepOf(fid));
+    else fieldEl(fid).scrollIntoView({ block: 'start', behavior: 'smooth' });
+    form.elements[fid].focus({ preventScroll: true });
+  }
+
+  // The field at the top of the screen, so switching layout keeps the place.
+  function fieldAtTop() {
+    const top = topEl.getBoundingClientRect().bottom;
+    return FIELD_IDS.find((fid) => {
+      const el = fieldEl(fid);
+      return !el.hidden && el.getBoundingClientRect().bottom > top + 40;
+    }) || STEPS[step][0];
+  }
+
+  function setMode(next) {
+    if (next === mode) return;
+    const anchor = focused || (mode === 'steg' ? STEPS[step][0] : fieldAtTop());
+    mode = next;
+    localStorage.setItem(FORM_MODE_KEY, mode);
+    if (mode === 'steg') step = stepOf(anchor);
+    updateLayout();
+    if (mode === 'steg' || stepOf(anchor) === 0) window.scrollTo(0, 0);
+    else fieldEl(anchor).scrollIntoView({ block: 'start' });
+    if (focused) keepVisible(focused);
+  }
+
+  // Resolves true for "Spara ändå". "Fyll i" goes to the first empty field.
+  function confirmEmpty(empty) {
+    const one = empty.length === 1;
+    document.getElementById('empty-dialog-title').textContent = one ? 'Ett fält är tomt' : `${empty.length} fält är tomma`;
+    document.getElementById('empty-dialog-list').innerHTML = empty.map((fid) => `<li>${esc(fieldLabel(fid))}</li>`).join('');
+    let text = 'Du kan spara ändå och fylla i resten senare.';
+    if (empty.includes('datum')) text += existing ? ' Utan datum behålls det tidigare datumet.' : ' Utan datum används dagens datum.';
+    document.getElementById('empty-dialog-text').textContent = text;
+    dialog.querySelector('[value="fill"]').textContent = one ? 'Fyll i fältet' : 'Fyll i fälten';
+    dialog.returnValue = '';
+    dialog.showModal();
+    return new Promise((resolve) => {
+      dialog.addEventListener('close', () => {
+        if (dialog.returnValue === 'fill') goToField(empty[0]);
+        resolve(dialog.returnValue === 'save');
+      }, { once: true });
+    });
+  }
+
   // When the keyboard opens or help text appears, bring the whole field
-  // (label, help, input) into the visible area.
+  // (label, input, help) into the visible area.
   function keepVisible(fid) {
     const check = () => {
       if (focused !== fid) return;
       const el = fieldEl(fid);
       const vv = window.visualViewport;
-      const top = (vv ? vv.offsetTop : 0) + document.querySelector('.appbar').offsetHeight;
+      const top = (vv ? vv.offsetTop : 0) + topEl.offsetHeight;
       const bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
       const rect = el.getBoundingClientRect();
       const input = form.elements[fid].getBoundingClientRect();
@@ -544,13 +676,6 @@ function renderForm(id) {
     setTimeout(check, 60);
     setTimeout(check, 400);
   }
-
-  function autoGrow(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 2 + 'px';
-  }
-  const needsAutoGrow = !(window.CSS && CSS.supports('field-sizing', 'content'));
-  if (needsAutoGrow) form.querySelectorAll('textarea').forEach(autoGrow);
 
   form.addEventListener('focusin', (e) => {
     const fid = e.target.name;
@@ -573,8 +698,8 @@ function renderForm(id) {
     if (needsAutoGrow && e.target.tagName === 'TEXTAREA') autoGrow(e.target);
     writeDraft(draftKey, currentValues());
     hasDraft = true;
-    if (showErrors) updateError(fid);
     updateStatus();
+    updateSteps();
   });
 
   form.querySelectorAll('.info-btn').forEach((btn) => {
@@ -588,22 +713,26 @@ function renderForm(id) {
     });
   });
 
-  form.addEventListener('submit', (e) => {
+  app.querySelectorAll('[data-mode]').forEach((btn) => {
+    // Switching layout mid-sentence keeps the field (and the keyboard) active.
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  stepDots.forEach((dot, i) => dot.addEventListener('click', () => goToStep(i)));
+  navButton('prev').addEventListener('click', () => goToStep(step - 1));
+  navButton('next').addEventListener('click', () => goToStep(step + 1));
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const missing = FIELD_IDS.filter((fid) => !valueOf(fid).trim());
-    if (missing.length) {
-      showErrors = true;
-      FIELD_IDS.forEach(updateError);
-      updateStatus();
-      const first = form.elements[missing[0]];
-      fieldEl(missing[0]).scrollIntoView({ block: 'start', behavior: 'smooth' });
-      first.focus({ preventScroll: true });
-      return;
-    }
+    const empty = FIELD_IDS.filter((fid) => !isFilled(fid));
+    if (empty.length && !(await confirmEmpty(empty))) return;
 
     const now = new Date().toISOString();
     const values = currentValues();
     for (const fid of FIELD_IDS) values[fid] = values[fid].trim();
+    // The list is ordered and grouped by date, so an entry always has one.
+    if (!values.datum) values.datum = existing ? existing.datum : todayISO();
 
     if (existing) {
       Object.assign(existing, values, { updatedAt: now });
@@ -625,6 +754,7 @@ function renderForm(id) {
     });
   }
 
+  updateLayout();
   updateStatus();
 }
 
@@ -649,7 +779,7 @@ function renderView(id) {
         ${FIELDS.filter((f) => f.id !== 'datum').map((f) => `
           <section class="view-section">
             <h3>${esc(f.label)}</h3>
-            <p>${esc(entry[f.id])}</p>
+            ${entry[f.id] ? `<p>${esc(entry[f.id])}</p>` : '<p class="is-empty">Inte ifyllt</p>'}
           </section>`).join('')}
       </main>
       <div class="bottombar">

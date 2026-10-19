@@ -1,6 +1,6 @@
 # KBT-dagbok
 
-A small installable web app (PWA) for logging social situations during a CBT course for social phobia. Each entry has the fields from the course worksheet: Datum, Situation, Tanke, Känsla och kropp, Tankehantering and Utvärdering. The app has no build step and no backend. It's plain HTML, CSS and JavaScript.
+A small installable web app (PWA) for logging social situations during a CBT course for social phobia. Each entry has the fields from the course worksheet: Datum, Situation, Tanke, Känsla och kropp, Tankehantering and Utvärdering. You can fill them in step by step or see all of them at once, and switch between the two at any time. No field is required: if some are empty when you save, the app warns you and lets you save anyway. The app has no build step and no backend. It's plain HTML, CSS and JavaScript.
 
 Entries are stored only on the phone, in the browser's storage for the site's address. Nothing is sent anywhere.
 

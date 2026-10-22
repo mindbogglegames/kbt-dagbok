@@ -21,7 +21,17 @@ const FIELDS = [
   },
   {
     id: 'hantering', label: 'Tankehantering', minHeight: '128px',
-    help: 'Använde du någon tankestrategi, i så fall vilken? Hanterade du tanken på annat sätt? Flydde du situationen? Tog du till ett säkerhetsbeteende? Agerade du på det sätt du ville, trots tanken? Observera att du kan registrera situationer oavsett om du hanterat tanken på ett hjälpsamt sätt eller inte. Det går att lära sig av alla situationer!'
+    help: 'Använde du någon tankestrategi, i så fall vilken? Hanterade du tanken på annat sätt? Flydde du situationen? Tog du till ett säkerhetsbeteende? Agerade du på det sätt du ville, trots tanken? Observera att du kan registrera situationer oavsett om du hanterat tanken på ett hjälpsamt sätt eller inte. Det går att lära sig av alla situationer!',
+    strategiesIntro: 'Några olika sätt att arbeta med tankarna:',
+    strategies: [
+      ['Ett rimligt scenario', 'vad vore ett rimligt scenario om du väger samman det värsta och det bästa som skulle kunna hända?'],
+      ['Undersök bevisen', 'vad talar för och emot tanken? Finns det andra rimliga förklaringar?'],
+      ['Nyansera ditt tänkande', 'vad är en rimlig tanke om du undviker ytterligheter?'],
+      ['Byt ut måsten och borden', 'använd t ex ”jag väljer att” eller ”det vore bra för mig”.'],
+      ['Vänd varför till förslag på lösningar', 'fundera på lösningar på situationen snarare än att älta upplevda misslyckanden.'],
+      ['Definiera begrepp', 'vad innebär begreppet för dig och stämmer det in på verkligheten?'],
+      ['Ta någon annans perspektiv', 'hur skulle du bemöta en vän som befann sig i samma situation?']
+    ]
   },
   {
     id: 'utvardering', label: 'Utvärdering', minHeight: '128px',
@@ -461,7 +471,12 @@ function fieldHtml(f, value) {
         <button type="button" class="info-btn" aria-label="Visa hjälp för ${esc(f.label)}" aria-expanded="false" aria-controls="${helpId}">${ICONS.info}</button>
       </div>
       ${control}
-      <p class="help" id="${helpId}" hidden>${esc(f.help)}</p>
+      <div class="help" id="${helpId}">
+        <p>${esc(f.help)}</p>
+        ${f.strategies ? `
+          <p class="help-subhead">${esc(f.strategiesIntro)}</p>
+          <ul>${f.strategies.map(([name, text]) => `<li><strong>${esc(name)}</strong> – ${esc(text)}</li>`).join('')}</ul>` : ''}
+      </div>
     </div>`;
 }
 
@@ -533,7 +548,8 @@ function renderForm(id) {
   const dialog = document.getElementById('empty-dialog');
   const stepTabs = [...app.querySelectorAll('.step-tab')];
   const navButton = (name) => app.querySelector(`[data-nav="${name}"]`);
-  const pinned = new Set();
+  // Help text is open by default; the ⓘ closes it for the rest of the visit.
+  const closedHelp = new Set();
   let focused = null;
   let hasDraft = restored;
   let mode = readFormMode();
@@ -553,7 +569,7 @@ function renderForm(id) {
 
   function updateHelp(fid) {
     const el = fieldEl(fid);
-    const show = focused === fid || pinned.has(fid);
+    const show = !closedHelp.has(fid);
     el.querySelector('.help').hidden = !show;
     const btn = el.querySelector('.info-btn');
     btn.setAttribute('aria-expanded', String(show));
@@ -680,7 +696,6 @@ function renderForm(id) {
     const fid = e.target.name;
     if (!FIELD_IDS.includes(fid)) return;
     focused = fid;
-    updateHelp(fid);
     keepVisible(fid);
   });
 
@@ -688,7 +703,6 @@ function renderForm(id) {
     const fid = e.target.name;
     if (!FIELD_IDS.includes(fid)) return;
     if (focused === fid) focused = null;
-    updateHelp(fid);
   });
 
   form.addEventListener('input', (e) => {
@@ -706,8 +720,8 @@ function renderForm(id) {
     // Keep focus (and the keyboard) on the field when the ⓘ is tapped.
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
-      if (pinned.has(fid)) pinned.delete(fid);
-      else pinned.add(fid);
+      if (closedHelp.has(fid)) closedHelp.delete(fid);
+      else closedHelp.add(fid);
       updateHelp(fid);
     });
   });
@@ -753,6 +767,7 @@ function renderForm(id) {
     });
   }
 
+  FIELD_IDS.forEach(updateHelp);
   updateLayout();
   updateStatus();
 }

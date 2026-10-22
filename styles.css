@@ -455,6 +455,11 @@ a, .btn-text { color: var(--navy); }
   color: var(--help-ink);
 }
 
+.help p { margin: 0; }
+.help .help-subhead { margin-top: 10px; font-weight: 700; }
+.help ul { margin: 6px 0 0; padding-left: 20px; }
+.help li + li { margin-top: 6px; }
+
 .input {
   width: 100%;
   padding: 12px 14px;

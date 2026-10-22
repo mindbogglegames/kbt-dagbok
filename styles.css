@@ -99,6 +99,9 @@ svg { flex-shrink: 0; }
   border-top: 1px solid var(--line);
 }
 
+.bottombar--row { flex-direction: row; }
+.bottombar--row .btn-primary { flex: 1; }
+
 /* ---------- Buttons ---------- */
 
 .btn {
@@ -122,6 +125,8 @@ svg { flex-shrink: 0; }
 .btn-secondary:active { background: var(--help-bg); }
 
 .btn:disabled { opacity: 0.4; cursor: default; }
+
+.btn-icon { width: 52px; flex: none; padding: 0; }
 
 .btn-small {
   flex: 1;
@@ -515,6 +520,14 @@ textarea.input {
 .dialog ul { margin: 10px 0 0; padding-left: 22px; color: var(--ink-2); }
 .dialog p { margin: 10px 0 0; line-height: 1.5; color: var(--ink-2); }
 .dialog-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+
+/* Padding sits on the form so a tap on the dialog element itself is a backdrop tap. */
+.dialog--scroll { max-height: calc(100dvh - 48px); padding: 0; overflow-y: auto; }
+.dialog--scroll form { padding: 20px; }
+/* The heading takes focus on open so the popup starts at the top, not at Stäng. */
+.dialog--scroll h2:focus { outline: none; }
+.dialog--scroll li + li { margin-top: 8px; }
+.dialog--scroll li { line-height: 1.5; }
 
 /* ---------- Entry view ---------- */
 

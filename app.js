@@ -215,6 +215,7 @@ const ICONS = {
   archive: svg('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/>', 20, '#23436e'),
   download: svg('<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>', 18),
   upload: svg('<path d="M12 20V9"/><path d="M7 14l5-5 5 5"/><path d="M5 4h14"/>', 18),
+  bulb: svg('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>', 24),
   edit: svg('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>', 20),
   info: '<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">'
     + '<circle class="ring" cx="14" cy="14" r="12.5" stroke-width="1.5"/>'
@@ -323,9 +324,7 @@ function renderHome() {
           </div>
         </section>
       </main>
-      <div class="bottombar">
-        <a class="btn btn-primary" href="#/ny">${ICONS.plus}Ny registrering</a>
-      </div>
+${homeBottombarHtml()}
     </div>`;
 }
 
@@ -365,10 +364,33 @@ function renderEmpty() {
       <div class="empty-import">
         <button type="button" class="btn-text" data-action="import">${ICONS.upload}Har du en säkerhetskopia? Importera</button>
       </div>
-      <div class="bottombar">
-        <a class="btn btn-primary" href="#/ny">${ICONS.plus}Ny registrering</a>
-      </div>
+${homeBottombarHtml()}
     </div>`;
+}
+
+function strategiesListHtml() {
+  const { strategies } = FIELDS.find((f) => f.id === 'hantering');
+  return `<ul>${strategies.map(([name, text]) => `<li><strong>${esc(name)}</strong> – ${esc(text)}</li>`).join('')}</ul>`;
+}
+
+// The ways to work with thoughts, one tap away from the list screen.
+function homeBottombarHtml() {
+  const { strategiesIntro } = FIELDS.find((f) => f.id === 'hantering');
+  return `
+      <div class="bottombar bottombar--row">
+        <a class="btn btn-primary" href="#/ny">${ICONS.plus}Ny registrering</a>
+        <button type="button" class="btn btn-secondary btn-icon" data-action="strategies" aria-label="Tankehantering" title="Tankehantering">${ICONS.bulb}</button>
+      </div>
+      <dialog class="dialog dialog--scroll" id="strategies-dialog" aria-labelledby="strategies-title">
+        <form method="dialog">
+          <h2 id="strategies-title" tabindex="-1" autofocus>Tankehantering</h2>
+          <p>${esc(strategiesIntro)}</p>
+          ${strategiesListHtml()}
+          <div class="dialog-actions">
+            <button class="btn btn-primary">Stäng</button>
+          </div>
+        </form>
+      </dialog>`;
 }
 
 // ---------- Backup ----------
@@ -475,7 +497,7 @@ function fieldHtml(f, value) {
         <p>${esc(f.help)}</p>
         ${f.strategies ? `
           <p class="help-subhead">${esc(f.strategiesIntro)}</p>
-          <ul>${f.strategies.map(([name, text]) => `<li><strong>${esc(name)}</strong> – ${esc(text)}</li>`).join('')}</ul>` : ''}
+          ${strategiesListHtml()}` : ''}
       </div>
     </div>`;
 }
@@ -830,6 +852,12 @@ app.addEventListener('click', (e) => {
   if (!action) return;
   if (action.dataset.action === 'export') exportBackup();
   if (action.dataset.action === 'import') document.getElementById('import-file').click();
+  if (action.dataset.action === 'strategies') document.getElementById('strategies-dialog').showModal();
+});
+
+// Tapping outside a dialog (on the backdrop) closes it.
+app.addEventListener('click', (e) => {
+  if (e.target.id === 'strategies-dialog') e.target.close();
 });
 
 document.getElementById('import-file').addEventListener('change', (e) => {
